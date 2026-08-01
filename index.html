@@ -1,0 +1,2116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Liner Notes — lyrics, chords &amp; performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --ink: #201E1B;
+    --ink-soft: #35312B;
+    --paper: #EFE7D8;
+    --paper-line: #DCD0B6;
+    --text: #2A2620;
+    --text-dim: #6B6252;
+    --brass: #B8862E;
+    --brass-bright: #D8A94A;
+    --pencil-red: #A13D3D;
+    --focus: #4A90A4;
+    --btn-bg: #201E1B;
+    --btn-text: #EFE7D8;
+    --sidebar-w: 260px;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ink); color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif; min-height: 100vh;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 16px 22px 14px; border-bottom: 3px solid var(--brass); background: var(--ink);
+    position: sticky; top: 0; z-index: 40;
+  }
+  header h1 {
+    font-family: 'Special Elite', monospace; color: var(--paper);
+    font-size: 1.35rem; letter-spacing: 0.5px; margin: 0;
+  }
+  header .tag {
+    font-family: 'IBM Plex Mono', monospace; color: var(--brass-bright);
+    font-size: 0.7rem; letter-spacing: 1.5px; text-transform: uppercase;
+  }
+  .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .icon-btn {
+    background: transparent; border: 1px solid var(--brass); color: var(--brass-bright);
+    border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 0.78rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .icon-btn:hover { background: color-mix(in srgb, var(--brass) 18%, transparent); }
+  .icon-btn:focus-visible { outline: 2px solid var(--focus); }
+  .theme-switch {
+    display: flex; border: 1px solid var(--brass); border-radius: 4px; overflow: hidden;
+  }
+  .theme-switch button {
+    background: transparent; border: none; color: var(--brass-bright);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem;
+    padding: 5px 10px; cursor: pointer;
+  }
+  .theme-switch button.active {
+    background: var(--brass); color: var(--ink);
+  }
+
+  .app { display: flex; min-height: calc(100vh - 60px); }
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0; background: var(--ink-soft);
+    padding: 14px 0; border-right: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
+    overflow-y: auto; display: flex; flex-direction: column;
+  }
+  .sidebar .new-btn, .sidebar .setlist-btn {
+    display: block; width: calc(100% - 24px); margin: 0 12px 10px;
+    padding: 9px 11px; background: transparent; border: 1.5px dashed var(--brass);
+    color: var(--brass-bright); font-weight: 600; font-size: 0.82rem;
+    border-radius: 3px; cursor: pointer; text-align: left;
+  }
+  .sidebar .new-btn:hover, .sidebar .setlist-btn:hover {
+    background: color-mix(in srgb, var(--brass) 14%, transparent);
+  }
+  .tab-list, .setlist-list { list-style: none; margin: 0; padding: 0; }
+  .tab, .setlist-item {
+    position: relative; margin: 0 0 4px 12px; padding: 9px 12px 9px 16px;
+    border-radius: 3px 0 0 3px; cursor: pointer;
+    color: color-mix(in srgb, var(--paper) 75%, var(--text-dim)); font-size: 0.85rem;
+  }
+  .tab .title, .setlist-item .title {
+    display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .tab .meta {
+    display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem;
+    color: var(--text-dim); margin-top: 2px;
+  }
+  .tab:hover, .setlist-item:hover {
+    background: color-mix(in srgb, var(--paper) 6%, transparent);
+  }
+  .tab.active, .setlist-item.active { background: var(--paper); color: var(--text); }
+  .tab.active::before, .setlist-item.active::before {
+    content: ""; position: absolute; left: -1px; top: 0; bottom: 0; width: 4px; background: var(--brass);
+  }
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-dim); padding: 12px 16px 4px;
+  }
+  .empty-sidebar { padding: 10px 18px; color: var(--text-dim); font-size: 0.8rem; font-style: italic; }
+
+  main { flex: 1; padding: 24px; display: flex; justify-content: center; align-items: flex-start; overflow: auto; }
+  .sheet {
+    width: 100%; max-width: 920px; background: var(--paper); border-radius: 4px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45); padding: 28px 32px 22px; color: var(--text);
+  }
+  .sheet-head { border-bottom: 2px solid var(--paper-line); padding-bottom: 12px; margin-bottom: 12px; }
+  .title-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+  #titleInput {
+    font-family: 'Special Elite', monospace; font-size: 1.5rem; color: var(--text);
+    background: transparent; border: none; border-bottom: 1px dashed transparent; width: 100%; padding: 2px 0;
+  }
+  #titleInput:focus { outline: none; border-bottom-color: var(--brass); }
+  .sheet-meta {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; text-align: right; line-height: 1.5;
+  }
+  .meta-row { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+  .meta-row-urls {
+    display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center;
+  }
+  .meta-row-urls label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-dim); white-space: nowrap;
+  }
+  .meta-row-urls input[type=url], .meta-row-urls input[type=text] {
+    flex: 1; min-width: 180px; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;
+    color: var(--text); background: color-mix(in srgb, var(--paper-line) 55%, var(--paper));
+    border: 1px solid var(--paper-line); border-radius: 3px; padding: 4px 8px;
+  }
+  .metro-wrap {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: var(--text-dim);
+  }
+  .metro-wrap button {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; padding: 4px 10px;
+    border-radius: 3px; border: 1px solid var(--brass); background: transparent;
+    color: var(--brass); cursor: pointer; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .metro-wrap button.active {
+    background: var(--brass); color: var(--ink);
+  }
+  .metro-beat {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--paper-line); display: inline-block;
+  }
+  .metro-beat.on { background: var(--brass); box-shadow: 0 0 6px var(--brass); }
+  .field-mini { display: flex; align-items: center; gap: 5px; }
+  .field-mini label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-dim);
+  }
+  .field-mini input, .field-mini select {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--text);
+    background: color-mix(in srgb, var(--paper-line) 55%, var(--paper));
+    border: 1px solid var(--paper-line); border-radius: 3px; padding: 3px 6px; width: 70px;
+  }
+
+  .editor-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 14px 0 8px; flex-wrap: wrap; gap: 8px;
+  }
+  .editor-bar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .mode-toggle, .instrument-toggle, .notation-toggle { display: flex; }
+  .mode-toggle button, .instrument-toggle button, .notation-toggle button {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.4px; padding: 5px 11px;
+    background: color-mix(in srgb, var(--paper-line) 55%, var(--paper));
+    color: var(--text-dim); border: 1px solid var(--paper-line); cursor: pointer;
+  }
+  .mode-toggle button:first-child, .instrument-toggle button:first-child, .notation-toggle button:first-child {
+    border-radius: 3px 0 0 3px; border-right: none;
+  }
+  .mode-toggle button:last-child, .instrument-toggle button:last-child, .notation-toggle button:last-child {
+    border-radius: 0 3px 3px 0;
+  }
+  .instrument-toggle button:not(:first-child):not(:last-child),
+  .notation-toggle button:not(:first-child):not(:last-child) { border-left: none; border-right: none; }
+  .mode-toggle button.active {
+    background: var(--btn-bg); color: var(--btn-text); border-color: var(--btn-bg);
+  }
+  .instrument-toggle button.active, .notation-toggle button.active {
+    background: var(--brass); color: var(--ink); border-color: var(--brass);
+  }
+  .transpose-control {
+    display: flex; align-items: center; gap: 5px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;
+  }
+  .transpose-control button {
+    width: 22px; height: 22px; line-height: 1; border-radius: 50%;
+    border: 1px solid var(--paper-line);
+    background: color-mix(in srgb, var(--paper-line) 55%, var(--paper));
+    color: var(--text); font-weight: 700; cursor: pointer; font-size: 0.85rem;
+  }
+  .scribble-tip { font-family: 'Caveat', cursive; font-size: 1rem; color: var(--pencil-red); white-space: nowrap; }
+
+  #bodyArea {
+    width: 100%; min-height: 380px; resize: vertical; border: none; background: transparent;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; line-height: 1.75;
+    color: var(--text); padding: 0; tab-size: 4;
+  }
+  #bodyArea:focus { outline: none; }
+  .chord-preview {
+    width: 100%; min-height: 380px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.95rem; line-height: 1.75; white-space: pre-wrap; word-break: break-word;
+  }
+  .chord-preview .chord-line { color: var(--brass); font-weight: 700; }
+  .chord-preview .lyric-line { color: var(--text); }
+  .chord-preview .nashville-line { color: #5B7A4A; font-weight: 700; }
+  .chord-preview .empty-msg { color: var(--text-dim); font-style: italic; }
+
+  .chord-chart { margin-top: 18px; padding-top: 14px; border-top: 2px solid var(--paper-line); }
+  .chord-chart h3 {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-dim); margin: 0 0 10px;
+  }
+  .chord-chart-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+  .chord-card { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .chord-card .chord-name {
+    font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 0.8rem; color: var(--brass);
+  }
+  .chord-card .chord-fingering {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.5px;
+  }
+  .chord-card .chord-howto {
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.65rem; color: var(--text-dim);
+    text-align: center; max-width: 110px; line-height: 1.3; margin-top: 2px;
+  }
+  .progression-box {
+    margin-top: 16px; padding: 12px 14px; border: 1px solid var(--paper-line);
+    border-radius: 4px; background: color-mix(in srgb, var(--brass) 8%, transparent);
+  }
+  .progression-box h3 {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-dim); margin: 0 0 8px;
+  }
+  .progression-seq {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; font-weight: 600;
+    color: var(--brass); line-height: 1.6; word-break: break-word;
+  }
+  .progression-ai {
+    margin-top: 8px; font-size: 0.78rem; color: var(--text); line-height: 1.45;
+    border-top: 1px dashed var(--paper-line); padding-top: 8px;
+  }
+  .progression-ai .ai-label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--brass); margin-right: 6px;
+  }
+  .ai-online-btn {
+    margin-top: 10px; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.75rem; font-weight: 600;
+    padding: 6px 12px; border-radius: 3px; border: 1.5px solid var(--brass);
+    background: transparent; color: var(--brass); cursor: pointer;
+  }
+  .ai-online-btn:hover { background: color-mix(in srgb, var(--brass) 14%, transparent); }
+  .ai-online-btn:disabled { opacity: 0.5; cursor: wait; }
+  .ai-online-result {
+    margin-top: 10px; padding: 10px 12px; border-radius: 4px;
+    background: color-mix(in srgb, var(--focus) 10%, transparent);
+    border: 1px solid var(--focus); font-size: 0.8rem; line-height: 1.5; white-space: pre-wrap;
+  }
+  .ai-online-result .ai-label { color: var(--focus); }
+
+  .toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 18px; padding-top: 14px; border-top: 2px solid var(--paper-line); gap: 8px; flex-wrap: wrap;
+  }
+  .toolbar .left-actions, .toolbar .right-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  button.action {
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
+    padding: 7px 12px; border-radius: 3px; border: 1.5px solid var(--btn-bg);
+    background: var(--btn-bg); color: var(--btn-text); cursor: pointer;
+  }
+  button.action.ghost {
+    background: transparent; color: var(--text); border-color: var(--paper-line);
+  }
+  button.action.ghost:hover { border-color: var(--pencil-red); color: var(--pencil-red); }
+  button.action:hover { filter: brightness(1.08); }
+
+  body.perf-mode header, body.perf-mode .sidebar { display: none; }
+  body.perf-mode main { padding: 0; min-height: 100vh; }
+  body.perf-mode .sheet {
+    max-width: none; min-height: 100vh; border-radius: 0; box-shadow: none;
+    padding: 40px 6vw; font-size: calc(1rem * var(--perf-scale, 1));
+  }
+  body.perf-mode #titleInput { font-size: 2.2em; pointer-events: none; }
+  body.perf-mode .meta-row, body.perf-mode .meta-row-urls, body.perf-mode .editor-bar, body.perf-mode .toolbar,
+  body.perf-mode .chord-chart, body.perf-mode .sheet-meta, body.perf-mode .progression-box {
+    display: none !important;
+  }
+  body.perf-mode .chord-preview, body.perf-mode #bodyArea {
+    font-size: 1.35em; line-height: 1.9; min-height: 70vh;
+  }
+  .perf-controls {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.75); color: #fff; border-radius: 30px;
+    padding: 8px 16px; display: none; gap: 12px; align-items: center; z-index: 100;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;
+  }
+  body.perf-mode .perf-controls { display: flex; }
+  .perf-controls button {
+    background: transparent; border: 1px solid #666; color: #fff; border-radius: 4px;
+    padding: 4px 10px; cursor: pointer;
+  }
+  .perf-controls input[type=range] { width: 80px; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200;
+    display: none; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--paper); color: var(--text); border-radius: 6px;
+    width: 92%; max-width: 520px; max-height: 88vh; overflow-y: auto;
+    padding: 22px 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  }
+  .modal h2 { font-family: 'Special Elite', monospace; margin: 0 0 14px; font-size: 1.25rem; }
+  .modal h3 {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--brass); margin: 16px 0 8px;
+  }
+  .modal label { display: block; font-size: 0.78rem; margin: 10px 0 3px; color: var(--text-dim); }
+  .modal select, .modal input[type=text], .modal input[type=number], .modal input[type=password] {
+    width: 100%; padding: 7px 9px; border: 1px solid var(--paper-line); border-radius: 3px;
+    background: color-mix(in srgb, var(--paper-line) 40%, var(--paper));
+    color: var(--text); font-family: inherit;
+  }
+  .color-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 6px;
+  }
+  .color-field label { margin: 0 0 4px; font-size: 0.72rem; }
+  .color-field input[type=color] {
+    width: 100%; height: 34px; padding: 2px; border: 1px solid var(--paper-line);
+    border-radius: 3px; background: var(--paper); cursor: pointer;
+  }
+  .modal-actions { margin-top: 18px; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  .modal .hint { font-size: 0.7rem; color: var(--text-dim); margin: 6px 0 0; line-height: 1.4; }
+
+  .empty-state { text-align: center; padding: 80px 20px; color: var(--text-dim); }
+  .empty-state .mark {
+    font-family: 'Special Elite', monospace; font-size: 1.25rem; color: var(--text);
+    display: block; margin-bottom: 8px;
+  }
+
+  @media print {
+    header, .sidebar, .editor-bar, .toolbar, .perf-controls, .modal-overlay { display: none !important; }
+    body { background: white; }
+    .sheet { box-shadow: none; max-width: none; padding: 0; }
+    main { padding: 0; }
+  }
+  @media (max-width: 800px) {
+    .app { flex-direction: column; }
+    .sidebar { width: 100%; border-right: none; border-bottom: 1px solid color-mix(in srgb, var(--text) 20%, transparent); max-height: 200px; }
+    main { padding: 12px; }
+    .sheet { padding: 16px 14px; }
+    .color-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Liner&nbsp;Notes</h1>
+  <div class="header-actions">
+    <span class="tag" id="songCount">0 pages</span>
+    <div class="theme-switch" title="Quick theme">
+      <button type="button" id="themeLightBtn">Light</button>
+      <button type="button" id="themeDarkBtn">Dark</button>
+    </div>
+    <button class="icon-btn" id="perfBtn" type="button" title="Performance mode (P)">Perf</button>
+    <button class="icon-btn" id="settingsBtn" type="button" title="Settings">⚙</button>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar">
+    <button class="new-btn" id="newSongBtn" type="button">+ New page</button>
+    <button class="setlist-btn" id="newSetlistBtn" type="button">+ New setlist</button>
+    <div class="section-label">Pages</div>
+    <ul class="tab-list" id="tabList"></ul>
+    <div class="section-label">Setlists</div>
+    <ul class="setlist-list" id="setlistList"></ul>
+  </aside>
+  <main>
+    <div class="sheet" id="sheet"></div>
+  </main>
+</div>
+
+<div class="perf-controls" id="perfControls">
+  <button type="button" id="perfExit">Exit (Esc)</button>
+  <button type="button" id="perfScrollToggle">Auto-scroll</button>
+  <label>Speed <input type="range" id="scrollSpeed" min="10" max="120" value="40"></label>
+  <label>Zoom
+    <select id="perfZoom">
+      <option value="0.5">50%</option>
+      <option value="0.75">75%</option>
+      <option value="1" selected>100%</option>
+      <option value="1.25">125%</option>
+      <option value="1.5">150%</option>
+    </select>
+  </label>
+  <button type="button" id="perfPrev">◀</button>
+  <button type="button" id="perfNext">▶</button>
+</div>
+
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h2>Settings</h2>
+
+    <label>Default Instrument</label>
+    <select id="setDefaultInst">
+      <option value="guitar">Guitar</option>
+      <option value="ukulele">Ukulele</option>
+      <option value="piano">Piano</option>
+      <option value="drums">Drums</option>
+      <option value="bass">Bass</option>
+    </select>
+    <label>Default Key</label>
+    <input type="text" id="setDefaultKey" placeholder="G" maxlength="4">
+    <label>Chord Style</label>
+    <select id="setChordStyle">
+      <option value="letters">Letter names (G Am)</option>
+      <option value="nashville">Nashville Numbers</option>
+      <option value="roman">Roman Numerals</option>
+    </select>
+    <label>Editor Font Size</label>
+    <input type="number" id="setFontSize" min="12" max="28" value="15">
+    <label>Autosave</label>
+    <select id="setAutosave">
+      <option value="1">On</option>
+      <option value="0">Off</option>
+    </select>
+
+    <h3>Theme base</h3>
+    <label>Light / Dark (also on header)</label>
+    <select id="setThemeBase">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+
+    <h3>Custom colours</h3>
+    <p class="hint">These override the base theme. Leave as-is or pick new colours for any part of the UI.</p>
+    <div class="color-grid">
+      <div class="color-field">
+        <label>Page background</label>
+        <input type="color" id="colInk" value="#201E1B">
+      </div>
+      <div class="color-field">
+        <label>Sidebar</label>
+        <input type="color" id="colInkSoft" value="#35312B">
+      </div>
+      <div class="color-field">
+        <label>Sheet / paper</label>
+        <input type="color" id="colPaper" value="#EFE7D8">
+      </div>
+      <div class="color-field">
+        <label>Sheet lines</label>
+        <input type="color" id="colPaperLine" value="#DCD0B6">
+      </div>
+      <div class="color-field">
+        <label>Main text</label>
+        <input type="color" id="colText" value="#2A2620">
+      </div>
+      <div class="color-field">
+        <label>Dim text</label>
+        <input type="color" id="colTextDim" value="#6B6252">
+      </div>
+      <div class="color-field">
+        <label>Accent (brass)</label>
+        <input type="color" id="colBrass" value="#B8862E">
+      </div>
+      <div class="color-field">
+        <label>Accent bright</label>
+        <input type="color" id="colBrassBright" value="#D8A94A">
+      </div>
+      <div class="color-field">
+        <label>Button background</label>
+        <input type="color" id="colBtnBg" value="#201E1B">
+      </div>
+      <div class="color-field">
+        <label>Button text</label>
+        <input type="color" id="colBtnText" value="#EFE7D8">
+      </div>
+      <div class="color-field">
+        <label>Highlight / focus</label>
+        <input type="color" id="colFocus" value="#4A90A4">
+      </div>
+      <div class="color-field">
+        <label>Scribble / danger</label>
+        <input type="color" id="colPencil" value="#A13D3D">
+      </div>
+    </div>
+    <div class="modal-actions" style="justify-content:flex-start;margin-top:10px">
+      <button class="action ghost" id="resetColorsBtn" type="button">Reset colours to theme</button>
+    </div>
+
+    <h3>Firebase cloud sync (optional)</h3>
+    <p class="hint">
+      Create a project at <a href="https://console.firebase.google.com" target="_blank" rel="noopener">Firebase Console</a>,
+      enable <strong>Authentication → Anonymous</strong> (and/or Email), and <strong>Firestore</strong>.
+      Paste your web app config below. Data is stored at <code>users/{uid}/linerNotes</code>.
+    </p>
+    <label>Firebase config (JSON)</label>
+    <textarea id="setFbConfig" rows="5" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}' style="width:100%;font-family:'IBM Plex Mono',monospace;font-size:0.72rem;padding:8px;border:1px solid var(--paper-line);border-radius:3px;background:color-mix(in srgb, var(--paper-line) 40%, var(--paper));color:var(--text);resize:vertical"></textarea>
+    <label>Email (optional sign-in)</label>
+    <input type="email" id="setFbEmail" placeholder="you@example.com" autocomplete="username">
+    <label>Password</label>
+    <input type="password" id="setFbPassword" placeholder="••••••••" autocomplete="current-password">
+    <div class="modal-actions" style="justify-content:flex-start;margin-top:8px;gap:6px;flex-wrap:wrap">
+      <button class="action ghost" id="fbAnonBtn" type="button">Sign in anonymously</button>
+      <button class="action ghost" id="fbEmailBtn" type="button">Sign in with email</button>
+      <button class="action ghost" id="fbSignOutBtn" type="button">Sign out</button>
+    </div>
+    <div class="modal-actions" style="justify-content:flex-start;margin-top:6px;gap:6px;flex-wrap:wrap">
+      <button class="action" id="fbPushBtn" type="button">Push to cloud</button>
+      <button class="action" id="fbPullBtn" type="button">Pull from cloud</button>
+    </div>
+    <p class="hint" id="fbStatus">Firebase: not connected</p>
+
+    <h3>Online AI (optional)</h3>
+    <label>API Base URL</label>
+    <input type="text" id="setAiBase" placeholder="https://api.openai.com/v1">
+    <label>API Key</label>
+    <input type="password" id="setAiKey" placeholder="sk-... (stored only in this browser)">
+    <label>Model</label>
+    <input type="text" id="setAiModel" placeholder="gpt-4o-mini">
+    <p class="hint">
+      OpenAI-compatible Chat Completions API. Key is stored only in this browser.<br>
+      <strong>Note:</strong> Opening this file as <code>file://</code> usually blocks API calls (CORS).
+      Use <em>Copy prompt</em> on the song page and paste into ChatGPT/Grok, or host the page over https with a proxy.
+      Providers that sometimes work from the browser: some OpenRouter / local Ollama setups with CORS enabled.
+    </p>
+
+    <div class="modal-actions">
+      <button class="action ghost" id="backupBtn" type="button">Download Backup</button>
+      <button class="action ghost" id="restoreBtn" type="button">Restore Backup</button>
+      <button class="action" id="settingsClose" type="button">Done</button>
+    </div>
+    <input type="file" id="restoreFile" accept=".json" style="display:none">
+  </div>
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'liner-notes-data-v4';
+  const SETTINGS_KEY = 'liner-notes-settings-v2';
+
+  const THEME_PRESETS = {
+    light: {
+      ink: '#f4f1ea', inkSoft: '#e8e2d6', paper: '#ffffff', paperLine: '#ddd5c4',
+      text: '#2A2620', textDim: '#6B6252', brass: '#9a7020', brassBright: '#b8862e',
+      btnBg: '#2A2620', btnText: '#ffffff', focus: '#4A90A4', pencil: '#A13D3D'
+    },
+    dark: {
+      ink: '#121212', inkSoft: '#1c1c1c', paper: '#1e1e1e', paperLine: '#333333',
+      text: '#e8e4d9', textDim: '#9a9488', brass: '#c9a14a', brassBright: '#e0b85c',
+      btnBg: '#c9a14a', btnText: '#121212', focus: '#6ab0c4', pencil: '#d06060'
+    }
+  };
+
+  let state = load();
+  let settings = loadSettings();
+  let activeId = state.songs.length ? state.songs[0].id : null;
+  let activeSetlistId = null;
+  let viewMode = 'write';
+  let notationMode = (settings.chordStyle === 'nashville') ? 'nashville'
+                   : (settings.chordStyle === 'roman') ? 'roman' : 'chords';
+  let perfMode = false;
+  let autoScroll = false;
+  let scrollTimer = null;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        (parsed.songs || []).forEach(function (s) {
+          if (!s.instrument) s.instrument = 'guitar';
+          if (!s.tags) s.tags = [];
+          if (!s.folder) s.folder = '';
+          if (s.tempo == null || s.tempo === '') s.tempo = 90;
+          if (!s.urls || typeof s.urls !== 'object') {
+            s.urls = { guitar: '', ukulele: '', piano: '', bass: '', drums: '' };
+          } else {
+            ['guitar','ukulele','piano','bass','drums'].forEach(function (k) {
+              if (s.urls[k] == null) s.urls[k] = '';
+            });
+          }
+        });
+        if (!parsed.setlists) parsed.setlists = [];
+        return parsed;
+      }
+    } catch (e) {}
+    return { songs: [], setlists: [] };
+  }
+  function persist() {
+    if (settings.autosave !== false) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+  }
+  function loadSettings() {
+    const defaults = {
+      defaultInst: 'guitar', defaultKey: '', themeBase: 'light',
+      chordStyle: 'letters', fontSize: 15, autosave: true,
+      aiBase: 'https://api.openai.com/v1', aiKey: '', aiModel: 'gpt-4o-mini',
+      colors: null,
+      firebaseConfig: '',
+      fbEmail: ''
+    };
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (raw) return Object.assign({}, defaults, JSON.parse(raw));
+    } catch (e) {}
+    return defaults;
+  }
+  function saveSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+    applyTheme();
+  }
+
+  function resolveColors() {
+    const base = THEME_PRESETS[settings.themeBase] || THEME_PRESETS.light;
+    const c = settings.colors || {};
+    return {
+      ink: c.ink || base.ink,
+      inkSoft: c.inkSoft || base.inkSoft,
+      paper: c.paper || base.paper,
+      paperLine: c.paperLine || base.paperLine,
+      text: c.text || base.text,
+      textDim: c.textDim || base.textDim,
+      brass: c.brass || base.brass,
+      brassBright: c.brassBright || base.brassBright,
+      btnBg: c.btnBg || base.btnBg,
+      btnText: c.btnText || base.btnText,
+      focus: c.focus || base.focus,
+      pencil: c.pencil || base.pencil
+    };
+  }
+
+
+  // ---------- Firebase ----------
+  let fbApp = null;
+  let fbAuth = null;
+  let fbDb = null;
+  let fbUser = null;
+
+  function setFbStatus(msg) {
+    const el = document.getElementById('fbStatus');
+    if (el) el.textContent = msg;
+  }
+
+  function parseFbConfig() {
+    const raw = (settings.firebaseConfig || '').trim();
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      throw new Error('Invalid Firebase config JSON');
+    }
+  }
+
+  function initFirebase() {
+    if (typeof firebase === 'undefined') {
+      setFbStatus('Firebase: SDK not loaded (need network)');
+      return false;
+    }
+    const cfg = parseFbConfig();
+    if (!cfg || !cfg.apiKey || !cfg.projectId) {
+      setFbStatus('Firebase: paste config JSON in Settings');
+      return false;
+    }
+    try {
+      if (firebase.apps && firebase.apps.length) {
+        fbApp = firebase.app();
+      } else {
+        fbApp = firebase.initializeApp(cfg);
+      }
+      fbAuth = firebase.auth();
+      fbDb = firebase.firestore();
+      fbAuth.onAuthStateChanged(function (user) {
+        fbUser = user;
+        if (user) {
+          setFbStatus('Firebase: signed in as ' + (user.isAnonymous ? 'anonymous' : (user.email || user.uid)));
+        } else {
+          setFbStatus('Firebase: connected, not signed in');
+        }
+      });
+      setFbStatus('Firebase: initialized');
+      return true;
+    } catch (e) {
+      setFbStatus('Firebase error: ' + (e.message || e));
+      return false;
+    }
+  }
+
+  function requireFbUser() {
+    if (!initFirebase()) throw new Error('Configure Firebase first');
+    if (!fbUser) throw new Error('Sign in first (anonymous or email)');
+    return fbUser;
+  }
+
+  function cloudDocRef() {
+    const user = requireFbUser();
+    return fbDb.collection('users').doc(user.uid).collection('data').doc('linerNotes');
+  }
+
+  async function fbPush() {
+    const ref = cloudDocRef();
+    const payload = {
+      songs: state.songs,
+      setlists: state.setlists,
+      updatedAt: Date.now(),
+      version: 4
+    };
+    await ref.set(payload, { merge: true });
+    setFbStatus('Firebase: pushed ' + state.songs.length + ' songs at ' + new Date().toLocaleTimeString());
+  }
+
+  async function fbPull() {
+    const ref = cloudDocRef();
+    const snap = await ref.get();
+    if (!snap.exists) {
+      setFbStatus('Firebase: no cloud data yet — push first');
+      return;
+    }
+    const data = snap.data() || {};
+    if (data.songs) {
+      state.songs = data.songs;
+      state.songs.forEach(function (s) {
+        if (!s.instrument) s.instrument = 'guitar';
+        if (!s.tags) s.tags = [];
+        if (s.tempo == null) s.tempo = 90;
+        if (!s.urls) s.urls = { guitar: '', ukulele: '', piano: '', bass: '', drums: '' };
+      });
+    }
+    if (data.setlists) state.setlists = data.setlists;
+    if (!state.setlists) state.setlists = [];
+    activeId = state.songs.length ? state.songs[0].id : null;
+    persist();
+    render();
+    setFbStatus('Firebase: pulled ' + state.songs.length + ' songs');
+  }
+
+  async function fbSignInAnon() {
+    if (!initFirebase()) return;
+    await fbAuth.signInAnonymously();
+  }
+
+  async function fbSignInEmail(email, password) {
+    if (!initFirebase()) return;
+    try {
+      await fbAuth.signInWithEmailAndPassword(email, password);
+    } catch (e) {
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+        await fbAuth.createUserWithEmailAndPassword(email, password);
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  async function fbSignOut() {
+    if (fbAuth) await fbAuth.signOut();
+    fbUser = null;
+    setFbStatus('Firebase: signed out');
+  }
+
+  function applyTheme() {
+    const c = resolveColors();
+    const root = document.documentElement;
+    root.style.setProperty('--ink', c.ink);
+    root.style.setProperty('--ink-soft', c.inkSoft);
+    root.style.setProperty('--paper', c.paper);
+    root.style.setProperty('--paper-line', c.paperLine);
+    root.style.setProperty('--text', c.text);
+    root.style.setProperty('--text-dim', c.textDim);
+    root.style.setProperty('--brass', c.brass);
+    root.style.setProperty('--brass-bright', c.brassBright);
+    root.style.setProperty('--btn-bg', c.btnBg);
+    root.style.setProperty('--btn-text', c.btnText);
+    root.style.setProperty('--focus', c.focus);
+    root.style.setProperty('--pencil-red', c.pencil);
+
+    const lightBtn = document.getElementById('themeLightBtn');
+    const darkBtn = document.getElementById('themeDarkBtn');
+    if (lightBtn && darkBtn) {
+      lightBtn.classList.toggle('active', settings.themeBase === 'light');
+      darkBtn.classList.toggle('active', settings.themeBase === 'dark');
+    }
+    const area = document.getElementById('bodyArea');
+    if (area) area.style.fontSize = (settings.fontSize || 15) + 'px';
+  }
+
+  function setThemeBase(base) {
+    settings.themeBase = base === 'dark' ? 'dark' : 'light';
+    // when switching base, clear custom overrides so preset is pure
+    // (user can re-customize in Settings)
+    settings.colors = null;
+    saveSettings();
+    syncColorInputs();
+  }
+
+  function syncColorInputs() {
+    const c = resolveColors();
+    const map = {
+      colInk: 'ink', colInkSoft: 'inkSoft', colPaper: 'paper', colPaperLine: 'paperLine',
+      colText: 'text', colTextDim: 'textDim', colBrass: 'brass', colBrassBright: 'brassBright',
+      colBtnBg: 'btnBg', colBtnText: 'btnText', colFocus: 'focus', colPencil: 'pencil'
+    };
+    Object.keys(map).forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.value = c[map[id]];
+    });
+  }
+
+  function readColorsFromInputs() {
+    return {
+      ink: document.getElementById('colInk').value,
+      inkSoft: document.getElementById('colInkSoft').value,
+      paper: document.getElementById('colPaper').value,
+      paperLine: document.getElementById('colPaperLine').value,
+      text: document.getElementById('colText').value,
+      textDim: document.getElementById('colTextDim').value,
+      brass: document.getElementById('colBrass').value,
+      brassBright: document.getElementById('colBrassBright').value,
+      btnBg: document.getElementById('colBtnBg').value,
+      btnText: document.getElementById('colBtnText').value,
+      focus: document.getElementById('colFocus').value,
+      pencil: document.getElementById('colPencil').value
+    };
+  }
+
+  function uid() { return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function slugify(str) {
+    return (str || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'untitled';
+  }
+  function formatTime(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' +
+           d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+  function wordCount(text) {
+    const t = (text || '').trim();
+    return t ? t.split(/\s+/).length : 0;
+  }
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : str;
+    return div.innerHTML;
+  }
+
+  const CHORD_RE = /^(N\.?C\.?|[A-G](#|b)?(maj7|maj9|maj13|maj|min7|min9|min11|min|m7b5|m7#5|m7|m9|m11|m6|m|sus2|sus4|sus|add9|add11|add2|add|dim7|dim|aug|6\/9|6|7sus4|7b5|7#5|7|9|11|13)?(\/[A-G](#|b)?)?)$/i;
+  const INSTRUMENTS = [
+    { id: 'guitar', label: 'Guitar' },
+    { id: 'ukulele', label: 'Ukulele' },
+    { id: 'piano', label: 'Piano' },
+    { id: 'bass', label: 'Bass' },
+    { id: 'drums', label: 'Drums' }
+  ];
+  const SHARP_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const FLAT_NAMES  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+  const NOTE_TO_PC = {
+    'C':0,'B#':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'Fb':4,'E#':5,'F':5,
+    'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11,'Cb':11
+  };
+  const DEGREE_NAMES = ['1','b2','2','b3','3','4','b5','5','b6','6','b7','7'];
+  const ROMAN = ['I','bII','II','bIII','III','IV','bV','V','bVI','VI','bVII','VII'];
+
+  function isChordLine(line) {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    return trimmed.split(/\s+/).every(function (t) { return CHORD_RE.test(t); });
+  }
+  function splitToken(token) {
+    const m = String(token).match(/^([A-G])([#b]?)(.*?)(?:\/([A-G][#b]?))?$/i);
+    if (!m) return null;
+    return { root: m[1].toUpperCase() + (m[2] || ''), quality: m[3] || '', bass: m[4] || '' };
+  }
+  function transposeNoteName(name, semitones, useFlats) {
+    const pc = NOTE_TO_PC[name];
+    if (pc === undefined) return name;
+    const next = ((pc + semitones) % 12 + 12) % 12;
+    return (useFlats ? FLAT_NAMES : SHARP_NAMES)[next];
+  }
+  function transposeToken(token, semitones) {
+    if (!token) return token;
+    const trimmed = String(token).trim();
+    if (/^N\.?C\.?$/i.test(trimmed)) return token;
+    const parts = splitToken(trimmed);
+    if (!parts) return token;
+    const useFlats = parts.root.includes('b');
+    let out = transposeNoteName(parts.root, semitones, useFlats) + parts.quality;
+    if (parts.bass) out += '/' + transposeNoteName(parts.bass, semitones, useFlats);
+    return out;
+  }
+  function transposeBody(body, semitones) {
+    return (body || '').split('\n').map(function (line) {
+      if (!isChordLine(line)) return line;
+      const leading = line.match(/^\s*/)[0];
+      const tokens = line.trim().split(/(\s+)/);
+      return leading + tokens.map(function (t) {
+        return /\s+/.test(t) ? t : transposeToken(t, semitones);
+      }).join('');
+    }).join('\n');
+  }
+  function keyToPc(key) {
+    if (!key) return 0;
+    const m = String(key).trim().match(/^([A-G][#b]?)/i);
+    if (!m) return 0;
+    const n = m[1].charAt(0).toUpperCase() + m[1].slice(1);
+    return NOTE_TO_PC[n] ?? 0;
+  }
+  function toNashville(token, keyPc) {
+    if (/^N\.?C\.?$/i.test(token)) return 'N.C.';
+    const parts = splitToken(token);
+    if (!parts) return token;
+    const rootPc = NOTE_TO_PC[parts.root];
+    if (rootPc === undefined) return token;
+    const deg = ((rootPc - keyPc) % 12 + 12) % 12;
+    let q = (parts.quality || '').toLowerCase();
+    let num = DEGREE_NAMES[deg];
+    if (q === 'm' || q === 'min' || q.startsWith('m')) num += 'm';
+    else if (q === '7') num += '7';
+    else if (q.includes('maj7')) num += 'maj7';
+    else if (q) num += q;
+    if (parts.bass) {
+      const bPc = NOTE_TO_PC[parts.bass];
+      if (bPc !== undefined) {
+        const bDeg = ((bPc - keyPc) % 12 + 12) % 12;
+        num += '/' + DEGREE_NAMES[bDeg];
+      }
+    }
+    return num;
+  }
+  function toRoman(token, keyPc) {
+    if (/^N\.?C\.?$/i.test(token)) return 'N.C.';
+    const parts = splitToken(token);
+    if (!parts) return token;
+    const rootPc = NOTE_TO_PC[parts.root];
+    if (rootPc === undefined) return token;
+    const deg = ((rootPc - keyPc) % 12 + 12) % 12;
+    let r = ROMAN[deg];
+    const q = (parts.quality || '').toLowerCase();
+    if (q === 'm' || q === 'min' || q.startsWith('m')) r = r.toLowerCase();
+    else if (q === '7') r += '7';
+    else if (q.includes('maj7')) r += 'maj7';
+    return r;
+  }
+  function convertBodyNotation(body, key, style) {
+    if (!key || (style !== 'nashville' && style !== 'roman')) return body;
+    const keyPc = keyToPc(key);
+    return (body || '').split('\n').map(function (line) {
+      if (!isChordLine(line)) return line;
+      const leading = line.match(/^\s*/)[0];
+      const tokens = line.trim().split(/(\s+)/);
+      return leading + tokens.map(function (t) {
+        if (/\s+/.test(t)) return t;
+        if (style === 'nashville') return toNashville(t, keyPc);
+        if (style === 'roman') return toRoman(t, keyPc);
+        return t;
+      }).join('');
+    }).join('\n');
+  }
+
+  const GUITAR_SHAPES = {
+    'C':['x',3,2,0,1,0],'Cm':['x',3,5,5,4,3],'C7':['x',3,2,3,1,0],
+    'D':['x','x',0,2,3,2],'Dm':['x','x',0,2,3,1],'D7':['x','x',0,2,1,2],
+    'E':[0,2,2,1,0,0],'Em':[0,2,2,0,0,0],'E7':[0,2,0,1,0,0],
+    'F':[1,3,3,2,1,1],'Fm':[1,3,3,1,1,1],'F7':[1,3,1,2,1,1],
+    'G':[3,2,0,0,0,3],'Gm':[3,5,5,3,3,3],'G7':[3,2,0,0,0,1],
+    'A':['x',0,2,2,2,0],'Am':['x',0,2,2,1,0],'A7':['x',0,2,0,2,0],
+    'B':['x',2,4,4,4,2],'Bm':['x',2,4,4,3,2],'B7':['x',2,1,2,0,2]
+  };
+  const UKULELE_SHAPES = {
+    'C':[0,0,0,3],'Cm':[0,3,3,3],'C7':[0,0,0,1],
+    'D':[2,2,2,0],'Dm':[2,2,1,0],'D7':[2,2,2,3],
+    'E':[4,4,4,2],'Em':[0,4,3,2],'E7':[1,2,0,2],
+    'F':[2,0,1,0],'Fm':[1,0,1,3],'F7':[2,3,1,0],
+    'G':[0,2,3,2],'Gm':[0,2,3,1],'G7':[0,2,1,2],
+    'A':[2,1,0,0],'Am':[2,0,0,0],'A7':[0,1,0,0],
+    'B':[4,3,2,2],'Bm':[4,2,2,2],'B7':[2,3,2,2]
+  };
+  const HOW_TO_PLAY = {
+    'C':  { fingering: 'x32010', tip: 'Ring on A3, middle on D2, index on B1. Leave high E open.' },
+    'Cm': { fingering: 'x35543', tip: 'Barre 3rd fret; hard for beginners — try Capo 3 + Am shape.' },
+    'C7': { fingering: 'x32310', tip: 'Like C major but add pinky on G3.' },
+    'D':  { fingering: 'xx0232', tip: 'Index on G2, ring on B3, middle on high E2.' },
+    'Dm': { fingering: 'xx0231', tip: 'Index on high E1, middle G2, ring B3.' },
+    'D7': { fingering: 'xx0212', tip: 'Index on high E2, middle G1, ring B2.' },
+    'E':  { fingering: '022100', tip: 'Middle A2, ring D2, index G1. Classic open E.' },
+    'Em': { fingering: '022000', tip: 'Just middle + ring on A2 & D2. Easiest chord!' },
+    'E7': { fingering: '020100', tip: 'Like E but lift the ring finger (D string open).' },
+    'F':  { fingering: '133211', tip: 'Full barre on 1st fret. Tough at first — build strength.' },
+    'Fm': { fingering: '133111', tip: 'Barre 1st fret, middle + ring on A3 & D3.' },
+    'F7': { fingering: '131211', tip: 'Barre F shape but lift ring so D string is 1.' },
+    'G':  { fingering: '320003', tip: 'Middle low E3, index A2, ring high E3 (or pinky).' },
+    'Gm': { fingering: '355333', tip: 'Barre 3rd fret. Or Capo 3 + Em shape.' },
+    'G7': { fingering: '320001', tip: 'Like G but index on high E1 instead of 3.' },
+    'A':  { fingering: 'x02220', tip: 'Index/middle/ring on D2 G2 B2 (or barre them).' },
+    'Am': { fingering: 'x02210', tip: 'Middle D2, ring G2, index B1. Very common.' },
+    'A7': { fingering: 'x02020', tip: 'Like A but lift middle (G string open).' },
+    'B':  { fingering: 'x24442', tip: 'Barre 2nd fret. Or Capo 2 + A shape.' },
+    'Bm': { fingering: 'x24432', tip: 'Barre 2nd fret + middle on B3. Capo 2 + Am is easier.' },
+    'B7': { fingering: 'x21202', tip: 'Index A2, middle D1, ring G2, pinky high E2.' }
+  };
+  const UKE_HOW_TO = {
+    'C':  { fingering: '0003', tip: 'Ring finger on A string 3rd fret. Easiest uke chord.' },
+    'Cm': { fingering: '0333', tip: 'Index barre on 3rd fret across G C E.' },
+    'C7': { fingering: '0001', tip: 'Index on A string 1st fret.' },
+    'D':  { fingering: '2220', tip: 'Index/middle/ring on G2 C2 E2.' },
+    'Dm': { fingering: '2210', tip: 'Index E1, middle G2, ring C2.' },
+    'D7': { fingering: '2223', tip: 'Same as D plus pinky on A3.' },
+    'E':  { fingering: '4442', tip: 'Barre-ish on 4th; or 1402 alternative.' },
+    'Em': { fingering: '0432', tip: 'Index A2, middle E3, ring C4.' },
+    'E7': { fingering: '1202', tip: 'Index G1, middle C2, ring A2.' },
+    'F':  { fingering: '2010', tip: 'Middle G2, index E1. Super common.' },
+    'Fm': { fingering: '1013', tip: 'Index G1 + E1, ring A3.' },
+    'F7': { fingering: '2310', tip: 'Index E1, middle G2, ring C3.' },
+    'G':  { fingering: '0232', tip: 'Index C2, ring E3, middle A2.' },
+    'Gm': { fingering: '0231', tip: 'Index A1, middle C2, ring E3.' },
+    'G7': { fingering: '0212', tip: 'Index C2, middle A2, ring E2 shape.' },
+    'A':  { fingering: '2100', tip: 'Middle G2, index C1. Open E & A.' },
+    'Am': { fingering: '2000', tip: 'Middle on G2 only. Easiest minor.' },
+    'A7': { fingering: '0100', tip: 'Index on C1 only.' },
+    'B':  { fingering: '4322', tip: 'Barre 2nd + higher fingers. Advanced.' },
+    'Bm': { fingering: '4222', tip: 'Index barre 2nd fret, ring on G4.' },
+    'B7': { fingering: '2322', tip: 'Shape 2322.' }
+  };
+
+  function lookupShape(dict, root, quality) {
+    const q = (quality || '').toLowerCase();
+    const simple = q === '' || q === 'maj' ? '' : (q === 'm' || q === 'min') ? 'm' : (q === '7' ? '7' : null);
+    if (simple === null) return null;
+    return dict[root + simple] || null;
+  }
+  function lookupHowTo(instrument, root, quality) {
+    const q = (quality || '').toLowerCase();
+    const simple = q === '' || q === 'maj' ? '' : (q === 'm' || q === 'min') ? 'm' : (q === '7' ? '7' : null);
+    if (simple === null) return null;
+    const key = root + simple;
+    const dict = instrument === 'ukulele' ? UKE_HOW_TO : HOW_TO_PLAY;
+    return dict[key] || null;
+  }
+  function fretDiagramSVG(shape, strings) {
+    const w = 90, h = 100, stringGap = (w - 20) / (strings - 1), fretGap = 18;
+    let svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" width="90" height="100">';
+    svg += '<rect x="10" y="8" width="' + (w - 20) + '" height="4" fill="currentColor"/>';
+    for (let f = 0; f <= 4; f++) {
+      const y = 8 + f * fretGap;
+      svg += '<line x1="10" y1="' + y + '" x2="' + (w - 10) + '" y2="' + y + '" stroke="#A79C86" stroke-width="1"/>';
+    }
+    for (let s = 0; s < strings; s++) {
+      const x = 10 + s * stringGap;
+      svg += '<line x1="' + x + '" y1="8" x2="' + x + '" y2="' + (8 + 4 * fretGap) + '" stroke="#A79C86" stroke-width="1"/>';
+    }
+    shape.forEach(function (fret, s) {
+      const x = 10 + s * stringGap;
+      if (fret === 'x') svg += '<text x="' + x + '" y="6" font-size="8" text-anchor="middle" fill="#A13D3D">×</text>';
+      else if (fret === 0) svg += '<circle cx="' + x + '" cy="4" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/>';
+      else {
+        const y = 8 + (fret - 0.5) * fretGap;
+        svg += '<circle cx="' + x + '" cy="' + y + '" r="5" fill="var(--brass)"/>';
+      }
+    });
+    svg += '</svg>';
+    return svg;
+  }
+  function uniqueChordsInBody(body) {
+    const seen = [];
+    (body || '').split('\n').forEach(function (line) {
+      if (!isChordLine(line)) return;
+      line.trim().split(/\s+/).forEach(function (tok) {
+        if (!/^N\.?C\.?$/i.test(tok) && seen.indexOf(tok) === -1) seen.push(tok);
+      });
+    });
+    return seen;
+  }
+  function chordProgression(body) {
+    const seq = [];
+    (body || '').split('\n').forEach(function (line) {
+      if (!isChordLine(line)) return;
+      line.trim().split(/\s+/).forEach(function (tok) {
+        if (!/^N\.?C\.?$/i.test(tok)) seq.push(tok);
+      });
+    });
+    return seq;
+  }
+  function analyseProgression(seq, key) {
+    if (!seq.length) return null;
+    const unique = [];
+    seq.forEach(function (c) { if (unique.indexOf(c) === -1) unique.push(c); });
+    const keyPc = keyToPc(key || '');
+    let degrees = [];
+    if (key) {
+      degrees = unique.slice(0, 8).map(function (tok) {
+        const parts = splitToken(tok);
+        if (!parts) return '?';
+        const rootPc = NOTE_TO_PC[parts.root];
+        if (rootPc === undefined) return '?';
+        const deg = ((rootPc - keyPc) % 12 + 12) % 12;
+        let d = DEGREE_NAMES[deg];
+        const q = (parts.quality || '').toLowerCase();
+        if (q === 'm' || q === 'min' || q.startsWith('m')) d += 'm';
+        else if (q === '7') d += '7';
+        return d;
+      });
+    }
+    const degStr = degrees.length ? degrees.join(' – ') : '';
+    const patterns = {
+      '1 – 5 – 6m – 4': 'Classic pop / worship progression (I–V–vi–IV).',
+      '1 – 6m – 4 – 5': '50s progression (I–vi–IV–V). Doo-wop & ballads.',
+      '1 – 4 – 5 – 1': 'Simple I–IV–V. Folk, country, rock foundation.',
+      '1 – 4 – 1 – 5': 'Common I–IV–I–V turnaround.',
+      '1 – 5 – 4 – 1': 'I–V–IV–I. Straight-ahead rock/folk.',
+      '6m – 4 – 1 – 5': 'vi–IV–I–V. Emotional / modern pop feel.',
+      '2m – 5 – 1': 'ii–V–I. Jazz / gospel turnaround.'
+    };
+    let insight = '';
+    if (degStr && patterns[degStr]) insight = patterns[degStr];
+    else if (degrees.length >= 3) insight = 'Progression in ' + (key || 'unknown key') + ' centres on: ' + degStr + '.';
+    else insight = unique.length + ' distinct chord' + (unique.length === 1 ? '' : 's') + ' used.';
+    const hard = unique.filter(function (c) {
+      return /^(F|B|C#|F#|Bb|Eb|Ab|Db)/i.test(c) || /m\b|min|dim|aug|maj7|9|11|13/.test(c);
+    });
+    if (hard.length) {
+      insight += ' Tip: ' + hard.slice(0, 3).join(', ') + (hard.length > 3 ? '…' : '') +
+        ' can be simplified with a capo or open-position substitutes.';
+    }
+    return { sequence: seq, unique: unique, degrees: degStr, insight: insight };
+  }
+
+  function toChordPro(song) {
+    let out = '{title: ' + (song.title || 'Untitled') + '}\n';
+    if (song.key) out += '{key: ' + song.key + '}\n';
+    if (song.capo) out += '{capo: ' + song.capo + '}\n';
+    out += '\n';
+    const lines = (song.body || '').split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (isChordLine(line) && i + 1 < lines.length && !isChordLine(lines[i + 1]) && lines[i + 1].trim()) {
+        const chords = line.trim().split(/\s+/);
+        const lyric = lines[i + 1];
+        let cp = '', pos = 0;
+        const step = Math.max(1, Math.floor(lyric.length / Math.max(chords.length, 1)));
+        chords.forEach(function (c, idx) {
+          const target = Math.min(lyric.length, idx * step);
+          while (pos < target) cp += lyric[pos++];
+          cp += '[' + c + ']';
+        });
+        while (pos < lyric.length) cp += lyric[pos++];
+        out += cp + '\n';
+        i++;
+      } else if (isChordLine(line)) {
+        out += line.trim().split(/\s+/).map(function (c) { return '[' + c + ']'; }).join(' ') + '\n';
+      } else out += line + '\n';
+    }
+    return out;
+  }
+  function fromChordPro(text) {
+    const titleM = text.match(/\{title:\s*([^}]+)\}/i);
+    const keyM = text.match(/\{key:\s*([^}]+)\}/i);
+    const capoM = text.match(/\{capo:\s*([^}]+)\}/i);
+    const title = titleM ? titleM[1].trim() : '';
+    const key = keyM ? keyM[1].trim() : '';
+    const capo = capoM ? capoM[1].trim() : '';
+    let body = text.replace(/\{[^}]+\}/g, '').trim();
+    const lines = body.split('\n').map(function (l) {
+      if (!/\[[^\]]+\]/.test(l)) return l;
+      let chordLine = '', lyricLine = '', i = 0;
+      while (i < l.length) {
+        if (l[i] === '[') {
+          const end = l.indexOf(']', i);
+          if (end === -1) { lyricLine += l[i++]; continue; }
+          const chord = l.slice(i + 1, end);
+          if (chordLine.length < lyricLine.length) chordLine += ' '.repeat(lyricLine.length - chordLine.length);
+          chordLine += chord + '  ';
+          i = end + 1;
+        } else { lyricLine += l[i]; i++; }
+      }
+      return chordLine.trimEnd() + '\n' + lyricLine;
+    });
+    return { title: title, key: key, capo: capo, body: lines.join('\n') };
+  }
+
+  function newSong() {
+    const song = {
+      id: uid(), title: '', key: settings.defaultKey || '', capo: '', tuning: '',
+      body: '', instrument: settings.defaultInst || 'guitar',
+      tempo: 90,
+      urls: { guitar: '', ukulele: '', piano: '', bass: '', drums: '' },
+      tags: [], folder: '', updatedAt: Date.now()
+    };
+    state.songs.unshift(song);
+    activeId = song.id;
+    viewMode = 'write';
+    persist();
+    render();
+    setTimeout(function () {
+      const el = document.getElementById('titleInput');
+      if (el) el.focus();
+    }, 0);
+  }
+  function getActive() {
+    return state.songs.find(function (s) { return s.id === activeId; }) || null;
+  }
+  function deleteSong(id) {
+    const song = state.songs.find(function (s) { return s.id === id; });
+    if (!song) return;
+    if (!confirm('Delete "' + (song.title || 'untitled') + '"?')) return;
+    state.songs = state.songs.filter(function (s) { return s.id !== id; });
+    state.setlists.forEach(function (sl) {
+      sl.songIds = sl.songIds.filter(function (sid) { return sid !== id; });
+    });
+    if (activeId === id) activeId = state.songs.length ? state.songs[0].id : null;
+    persist();
+    render();
+  }
+  function newSetlist() {
+    const name = prompt('Setlist name:');
+    if (!name) return;
+    state.setlists.unshift({ id: uid(), name: name, songIds: [], updatedAt: Date.now() });
+    persist();
+    renderTabs();
+  }
+
+  function toMarkdown(song) {
+    let md = '# ' + (song.title || 'Untitled') + '\n\n';
+    const meta = [];
+    if (song.key) meta.push('Key: ' + song.key);
+    if (song.capo) meta.push('Capo: ' + song.capo);
+    if (song.tuning) meta.push('Tuning: ' + song.tuning);
+    if (meta.length) md += '_' + meta.join(' · ') + '_\n\n';
+    md += '```\n' + (song.body || '') + '\n```\n';
+    return md;
+  }
+
+  /** Parse Markdown chord sheets (including ones exported by this app). */
+  function fromMarkdown(text) {
+    text = String(text || '').replace(/^\uFEFF/, ''); // strip BOM
+    let title = '', key = '', capo = '', tuning = '', body = '';
+
+    // Title: first ATX heading
+    const titleM = text.match(/^#{1,3}\s+(.+?)\s*$/m);
+    if (titleM) title = titleM[1].replace(/#+$/, '').trim();
+
+    // Meta line like: _Key: G · Capo: 2 · Tuning: Standard_
+    const metaM = text.match(/^_([^_\n]+)_\s*$/m);
+    if (metaM) {
+      const parts = metaM[1].split(/[·|•]/).map(function (p) { return p.trim(); });
+      parts.forEach(function (p) {
+        const km = p.match(/^key\s*:\s*(.+)$/i);
+        const cm = p.match(/^capo\s*:\s*(.+)$/i);
+        const tm = p.match(/^tuning\s*:\s*(.+)$/i);
+        if (km) key = km[1].trim();
+        if (cm) capo = cm[1].trim();
+        if (tm) tuning = tm[1].trim();
+      });
+    }
+    // Also accept plain "Key: G" lines
+    if (!key) {
+      const km2 = text.match(/^key\s*:\s*(.+)$/im);
+      if (km2) key = km2[1].trim();
+    }
+    if (!capo) {
+      const cm2 = text.match(/^capo\s*:\s*(.+)$/im);
+      if (cm2) capo = cm2[1].trim();
+    }
+
+    // Prefer fenced code block contents (our export format)
+    const fenceM = text.match(/```[a-zA-Z0-9]*\n([\s\S]*?)```/);
+    if (fenceM) {
+      body = fenceM[1].replace(/\n$/, '');
+    } else {
+      // Fallback: strip markdown headings / emphasis and keep remaining lines
+      body = text
+        .replace(/^#{1,6}\s+.*$/gm, '')
+        .replace(/^_([^_]+)_$/gm, '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/^\s*[-*]\s+/gm, '')
+        .trim();
+    }
+
+    // If still empty, use whole file minus title line
+    if (!body.trim()) {
+      body = text.replace(/^#{1,3}\s+.+?\n/, '').trim();
+    }
+
+    return { title: title, key: key, capo: capo, tuning: tuning, body: body };
+  }
+
+  /** Detect format and parse. */
+  function importSongText(text, filename) {
+    const name = (filename || '').toLowerCase();
+    const looksChordPro = /\{title\s*:/i.test(text) || /\{key\s*:/i.test(text) || /\[[A-G][#b]?[^\]]*\]/.test(text);
+    const looksMd = name.endsWith('.md') || name.endsWith('.markdown') ||
+      /^#{1,3}\s+/m.test(text) || /```/.test(text);
+
+    if (name.endsWith('.cho') || name.endsWith('.crd') || name.endsWith('.chordpro') ||
+        (looksChordPro && !looksMd)) {
+      return fromChordPro(text);
+    }
+    if (looksMd || name.endsWith('.md') || name.endsWith('.markdown') || name.endsWith('.txt')) {
+      // If it still has ChordPro directives, prefer that parser
+      if (/\{title\s*:/i.test(text)) return fromChordPro(text);
+      return fromMarkdown(text);
+    }
+    // Default: try ChordPro first, else markdown
+    if (looksChordPro) return fromChordPro(text);
+    return fromMarkdown(text);
+  }
+
+  function triggerDownload(filename, content, type) {
+    const blob = content instanceof Blob ? content : new Blob([content], { type: type || 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+  function exportOne(song, fmt) {
+    if (fmt === 'chordpro') triggerDownload(slugify(song.title) + '.cho', toChordPro(song), 'text/plain');
+    else triggerDownload(slugify(song.title) + '.md', toMarkdown(song), 'text/markdown');
+  }
+  async function exportAll() {
+    if (!state.songs.length) return;
+    if (typeof JSZip === 'undefined') { alert('JSZip not loaded'); return; }
+    const zip = new JSZip();
+    state.songs.forEach(function (s) { zip.file(slugify(s.title) + '.md', toMarkdown(s)); });
+    const blob = await zip.generateAsync({ type: 'blob' });
+    triggerDownload('liner-notes-export.zip', blob, 'application/zip');
+  }
+
+
+  // ---------- Metronome (Web Audio) ----------
+  let metroCtx = null;
+  let metroTimer = null;
+  let metroRunning = false;
+  let metroBeat = 0;
+
+  function ensureMetroCtx() {
+    if (!metroCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      metroCtx = new AC();
+    }
+    if (metroCtx.state === 'suspended') metroCtx.resume();
+    return metroCtx;
+  }
+
+  function metroClick(accent) {
+    const ctx = ensureMetroCtx();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = accent ? 1200 : 800;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.35, t + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    osc.start(t);
+    osc.stop(t + 0.09);
+  }
+
+  function stopMetronome() {
+    metroRunning = false;
+    if (metroTimer) { clearInterval(metroTimer); metroTimer = null; }
+    metroBeat = 0;
+    const btn = document.getElementById('metroToggleBtn');
+    if (btn) { btn.classList.remove('active'); btn.textContent = 'Metronome'; }
+    const dot = document.getElementById('metroBeatDot');
+    if (dot) dot.classList.remove('on');
+  }
+
+  function startMetronome(bpm) {
+    stopMetronome();
+    const n = Math.max(30, Math.min(300, parseInt(bpm, 10) || 90));
+    const interval = 60000 / n;
+    metroRunning = true;
+    metroBeat = 0;
+    const btn = document.getElementById('metroToggleBtn');
+    if (btn) { btn.classList.add('active'); btn.textContent = 'Stop'; }
+    // immediate first click
+    metroClick(true);
+    const dot = document.getElementById('metroBeatDot');
+    if (dot) {
+      dot.classList.add('on');
+      setTimeout(function () { if (dot) dot.classList.remove('on'); }, 100);
+    }
+    metroTimer = setInterval(function () {
+      if (!metroRunning) return;
+      metroBeat = (metroBeat + 1) % 4;
+      metroClick(metroBeat === 0);
+      const d = document.getElementById('metroBeatDot');
+      if (d) {
+        d.classList.add('on');
+        setTimeout(function () { if (d) d.classList.remove('on'); }, 100);
+      }
+    }, interval);
+  }
+
+  function toggleMetronome(bpm) {
+    if (metroRunning) stopMetronome();
+    else startMetronome(bpm);
+  }
+
+  function renderTabs() {
+    const list = document.getElementById('tabList');
+    document.getElementById('songCount').textContent =
+      state.songs.length + (state.songs.length === 1 ? ' page' : ' pages');
+    if (!state.songs.length) {
+      list.innerHTML = '<li class="empty-sidebar">No pages yet.</li>';
+    } else {
+      list.innerHTML = state.songs.map(function (s) {
+        return '<li class="tab ' + (s.id === activeId ? 'active' : '') + '" data-id="' + s.id + '" tabindex="0">' +
+          '<span class="title">' + escapeHtml(s.title || 'Untitled') + '</span>' +
+          '<span class="meta">' + formatTime(s.updatedAt) + '</span></li>';
+      }).join('');
+      list.querySelectorAll('.tab').forEach(function (el) {
+        el.addEventListener('click', function () { activeId = el.dataset.id; viewMode = 'write'; render(); });
+        el.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activeId = el.dataset.id; render(); }
+        });
+      });
+    }
+    const slList = document.getElementById('setlistList');
+    if (!state.setlists.length) {
+      slList.innerHTML = '<li class="empty-sidebar">No setlists.</li>';
+    } else {
+      slList.innerHTML = state.setlists.map(function (sl) {
+        return '<li class="setlist-item ' + (sl.id === activeSetlistId ? 'active' : '') + '" data-id="' + sl.id + '">' +
+          '<span class="title">' + escapeHtml(sl.name) + '</span>' +
+          '<span class="meta">' + sl.songIds.length + ' songs</span></li>';
+      }).join('');
+      slList.querySelectorAll('.setlist-item').forEach(function (el) {
+        el.addEventListener('click', function () {
+          activeSetlistId = el.dataset.id;
+          const sl = state.setlists.find(function (s) { return s.id === activeSetlistId; });
+          if (sl && sl.songIds.length) activeId = sl.songIds[0];
+          render();
+        });
+      });
+    }
+  }
+
+  function updateMetaDisplay(song) {
+    const el = document.getElementById('sheetMeta');
+    if (!el) return;
+    el.innerHTML = wordCount(song.body) + ' words · ' +
+      (song.body || '').split('\n').filter(isChordLine).length + ' chord lines<br/>saved ' + formatTime(song.updatedAt);
+  }
+
+  function renderPreview(body, instrument, key) {
+    if (!body || !body.trim()) {
+      return '<span class="empty-msg">Nothing written yet — switch to Write.</span>';
+    }
+    const style = notationMode;
+    const displayBody = convertBodyNotation(body, key, style);
+    return displayBody.split('\n').map(function (line) {
+      const trimmed = line.trim();
+      const looksConverted = (style === 'nashville' || style === 'roman') &&
+        trimmed && /^[\dIb#m\/\smajnNcC\.]+$/i.test(trimmed.replace(/\s+/g, ' '));
+      if (isChordLine(line) || looksConverted) {
+        const cls = style === 'nashville' ? 'nashville-line' : 'chord-line';
+        return '<span class="' + cls + '">' + escapeHtml(line) + '</span>';
+      }
+      return '<span class="lyric-line">' + escapeHtml(line) + '</span>';
+    }).join('\n');
+  }
+
+  function buildAIPrompt(song, seq) {
+    const unique = [];
+    seq.forEach(function (c) { if (unique.indexOf(c) === -1) unique.push(c); });
+    return (
+      'You are a helpful music theory and guitar/ukulele coach.\n' +
+      'Song title: ' + (song.title || 'Untitled') + '\n' +
+      'Key: ' + (song.key || 'not set') + '\n' +
+      'Capo: ' + (song.capo || 'none') + '\n' +
+      'Instrument: ' + (song.instrument || 'guitar') + '\n' +
+      'Chord progression: ' + seq.join(' → ') + '\n' +
+      'Unique chords: ' + unique.join(', ') + '\n\n' +
+      'Provide:\n1. Progression name (e.g. I–V–vi–IV).\n' +
+      '2. How to play each unique chord on ' + (song.instrument || 'guitar') + ' (fingering + tip).\n' +
+      '3. One practical performance tip.\nKeep under 220 words. Plain text only.'
+    );
+  }
+
+  async function askOnlineAI(song, seq) {
+    const key = (settings.aiKey || '').trim();
+    if (!key) {
+      throw new Error('No API key. Open Settings → Online AI and paste your key, or use “Copy prompt” and paste into ChatGPT / Grok.');
+    }
+    const base = (settings.aiBase || 'https://api.openai.com/v1').replace(/\/$/, '');
+    const model = settings.aiModel || 'gpt-4o-mini';
+    const prompt = buildAIPrompt(song, seq);
+
+    let res;
+    try {
+      res = await fetch(base + '/chat/completions', {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + key
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: 'system', content: 'You are a concise, practical music coach for chord-sheet players.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.4,
+          max_tokens: 500
+        })
+      });
+    } catch (netErr) {
+      // Typical when opened as file:// or API blocks browser CORS
+      throw new Error(
+        'Network/CORS blocked. Most AI APIs (including OpenAI) refuse browser calls from a local HTML file. ' +
+        'Fix: use “Copy prompt” below and paste into ChatGPT or Grok, OR host this page on a server with a proxy. ' +
+        '(' + (netErr.message || 'fetch failed') + ')'
+      );
+    }
+
+    if (!res.ok) {
+      let errText = '';
+      try { errText = await res.text(); } catch (e) { errText = res.statusText; }
+      let detail = errText.slice(0, 200);
+      try {
+        const j = JSON.parse(errText);
+        if (j.error && j.error.message) detail = j.error.message;
+      } catch (e) {}
+      throw new Error('API ' + res.status + ': ' + detail);
+    }
+
+    const data = await res.json();
+    // OpenAI-style
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      return String(data.choices[0].message.content || '').trim();
+    }
+    // Some proxies return { content: "..." }
+    if (data.content) return String(data.content).trim();
+    if (data.output_text) return String(data.output_text).trim();
+    throw new Error('Unexpected API response. Check model name and base URL.');
+  }
+
+  function renderChordChart(song) {
+    const host = document.getElementById('chordChartHost');
+    if (!host) return;
+    if (viewMode !== 'preview' || song.instrument === 'drums' || song.instrument === 'bass') {
+      host.innerHTML = '';
+      return;
+    }
+    const chords = uniqueChordsInBody(song.body);
+    const seq = chordProgression(song.body);
+    if (!chords.length) { host.innerHTML = ''; return; }
+
+    const cards = chords.map(function (tok) {
+      const parts = splitToken(tok);
+      if (!parts) return '';
+      const dict = song.instrument === 'ukulele' ? UKULELE_SHAPES : GUITAR_SHAPES;
+      const strings = song.instrument === 'ukulele' ? 4 : 6;
+      const shape = lookupShape(dict, parts.root, parts.quality);
+      const howto = lookupHowTo(song.instrument, parts.root, parts.quality);
+      let html = '<div class="chord-card">';
+      if (shape && (song.instrument === 'guitar' || song.instrument === 'ukulele')) {
+        html += fretDiagramSVG(shape, strings);
+      }
+      html += '<span class="chord-name">' + escapeHtml(tok) + '</span>';
+      if (howto) {
+        html += '<span class="chord-fingering">' + escapeHtml(howto.fingering) + '</span>';
+        html += '<span class="chord-howto">' + escapeHtml(howto.tip) + '</span>';
+      } else if (shape) {
+        html += '<span class="chord-fingering">' + shape.join('') + '</span>';
+      } else {
+        html += '<span class="chord-howto">Diagram not available — try a simpler voicing or capo.</span>';
+      }
+      html += '</div>';
+      return html;
+    }).join('');
+
+    let progHtml = '';
+    let analysis = null;
+    if (seq.length) {
+      analysis = analyseProgression(seq, song.key);
+      const displaySeq = [];
+      seq.forEach(function (c) {
+        if (!displaySeq.length || displaySeq[displaySeq.length - 1] !== c) displaySeq.push(c);
+      });
+      const arrowSeq = displaySeq.join(' → ');
+      progHtml = '<div class="progression-box">' +
+        '<h3>Chord progression</h3>' +
+        '<div class="progression-seq">' + escapeHtml(arrowSeq) + '</div>';
+      if (analysis) {
+        progHtml += '<div class="progression-ai"><span class="ai-label">Quick</span>';
+        if (analysis.degrees) progHtml += escapeHtml(analysis.degrees) + ' · ';
+        progHtml += escapeHtml(analysis.insight) + '</div>';
+      }
+      progHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">';
+      progHtml += '<button type="button" class="ai-online-btn" id="aiCopyPromptBtn">Copy prompt</button>';
+      progHtml += '<button type="button" class="ai-online-btn" id="aiOnlineBtn">Analyse with AI (online)</button>';
+      progHtml += '</div>';
+      progHtml += '<div class="ai-online-result" id="aiOnlineResult" style="display:none"></div>';
+      progHtml += '</div>';
+    }
+
+    host.innerHTML =
+      '<div class="chord-chart"><h3>How to play — chords used</h3>' +
+      '<div class="chord-chart-grid">' + cards + '</div></div>' + progHtml;
+
+    const aiBtn = document.getElementById('aiOnlineBtn');
+    const copyBtn = document.getElementById('aiCopyPromptBtn');
+    const resultEl = document.getElementById('aiOnlineResult');
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        const prompt = buildAIPrompt(song, seq);
+        function ok() {
+          if (resultEl) {
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<span class="ai-label">Copied</span> Prompt copied. Paste it into ChatGPT, Grok, or Claude.';
+          }
+          copyBtn.textContent = 'Copied!';
+          setTimeout(function () { copyBtn.textContent = 'Copy prompt'; }, 1500);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(prompt).then(ok).catch(function () {
+            // fallback
+            const ta = document.createElement('textarea');
+            ta.value = prompt; document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); ok(); } catch (e) {
+              if (resultEl) {
+                resultEl.style.display = 'block';
+                resultEl.textContent = prompt;
+              }
+            }
+            ta.remove();
+          });
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = prompt; document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); ok(); } catch (e) {
+            if (resultEl) { resultEl.style.display = 'block'; resultEl.textContent = prompt; }
+          }
+          ta.remove();
+        }
+      });
+    }
+
+    if (aiBtn) {
+      aiBtn.addEventListener('click', function () {
+        if (!resultEl) return;
+        aiBtn.disabled = true;
+        aiBtn.textContent = 'Asking AI…';
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = '<span class="ai-label">Online AI</span> Thinking…';
+        askOnlineAI(song, seq)
+          .then(function (text) {
+            if (text) resultEl.innerHTML = '<span class="ai-label">Online AI</span>\n' + escapeHtml(text);
+            else resultEl.style.display = 'none';
+          })
+          .catch(function (err) {
+            resultEl.innerHTML = '<span class="ai-label">Error</span> ' + escapeHtml(err.message || String(err));
+          })
+          .finally(function () {
+            aiBtn.disabled = false;
+            aiBtn.textContent = 'Analyse with AI (online)';
+          });
+      });
+    }
+  }
+
+  function renderSheet() {
+    const sheet = document.getElementById('sheet');
+    const song = getActive();
+    if (!song) {
+      sheet.innerHTML = '<div class="empty-state"><span class="mark">A blank page.</span>Click “+ New page” to begin.</div>';
+      return;
+    }
+    sheet.innerHTML =
+      '<div class="sheet-head">' +
+        '<div class="title-row">' +
+          '<input id="titleInput" type="text" placeholder="Song title…" value="' + escapeHtml(song.title) + '" />' +
+          '<div class="sheet-meta" id="sheetMeta"></div>' +
+        '</div>' +
+                '<div class="meta-row">' +
+          '<div class="field-mini"><label>Key</label><input id="keyInput" type="text" value="' + escapeHtml(song.key) + '" placeholder="G" /></div>' +
+          '<div class="field-mini"><label>Capo</label><input id="capoInput" type="text" value="' + escapeHtml(song.capo) + '" placeholder="2" /></div>' +
+          '<div class="field-mini"><label>Tuning</label><input id="tuningInput" type="text" value="' + escapeHtml(song.tuning) + '" placeholder="Std" /></div>' +
+          '<div class="field-mini"><label>Tempo</label><input id="tempoInput" type="number" min="30" max="300" value="' + escapeHtml(String(song.tempo != null ? song.tempo : 90)) + '" placeholder="90" style="width:56px" /></div>' +
+          '<div class="field-mini"><label>Tags</label><input id="tagsInput" type="text" value="' + escapeHtml((song.tags || []).join(', ')) + '" placeholder="worship, slow" style="width:120px" /></div>' +
+          '<div class="metro-wrap">' +
+            '<span class="metro-beat" id="metroBeatDot"></span>' +
+            '<button type="button" id="metroToggleBtn">Metronome</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="meta-row-urls">' +
+          '<label id="urlInstLabel">How-to URL (' + escapeHtml(song.instrument || 'guitar') + ')</label>' +
+          '<input id="howtoUrlInput" type="url" placeholder="https://… lesson / tab / video for this instrument" value="' + escapeHtml((song.urls && song.urls[song.instrument]) ? song.urls[song.instrument] : '') + '" />' +
+          '<button type="button" class="action ghost" id="openHowtoBtn" style="padding:5px 10px">Open</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="editor-bar">' +
+        '<div class="editor-bar-left">' +
+          '<div class="mode-toggle">' +
+            '<button type="button" id="writeModeBtn" class="' + (viewMode === 'write' ? 'active' : '') + '">Write</button>' +
+            '<button type="button" id="previewModeBtn" class="' + (viewMode === 'preview' ? 'active' : '') + '">Preview</button>' +
+          '</div>' +
+          '<div class="instrument-toggle">' +
+            INSTRUMENTS.map(function (i) {
+              return '<button type="button" data-inst="' + i.id + '" class="' + (song.instrument === i.id ? 'active' : '') + '">' + i.label + '</button>';
+            }).join('') +
+          '</div>' +
+          '<div class="notation-toggle">' +
+            '<button type="button" data-not="chords" class="' + (notationMode === 'chords' ? 'active' : '') + '">Chords</button>' +
+            '<button type="button" data-not="nashville" class="' + (notationMode === 'nashville' ? 'active' : '') + '">Nash</button>' +
+            '<button type="button" data-not="roman" class="' + (notationMode === 'roman' ? 'active' : '') + '">Roman</button>' +
+          '</div>' +
+          '<div class="transpose-control">' +
+            '<button type="button" id="transposeDownBtn">−</button><span>Transpose</span>' +
+            '<button type="button" id="transposeUpBtn">+</button>' +
+          '</div>' +
+        '</div>' +
+        '<span class="scribble-tip">chords on their own line ✎</span>' +
+      '</div>' +
+      '<div id="editorHost"></div>' +
+      '<div id="chordChartHost"></div>' +
+      '<div class="toolbar">' +
+        '<div class="left-actions">' +
+          '<button class="action" id="exportMdBtn">Export .md</button>' +
+          '<button class="action" id="exportChoBtn">Export ChordPro</button>' +
+          '<button class="action ghost" id="exportAllBtn">Export all (.zip)</button>' +
+          '<button class="action ghost" id="importFileBtn">Import file</button>' +
+        '</div>' +
+        '<div class="right-actions"><button class="action ghost" id="deleteBtn">Delete</button></div>' +
+      '</div>' +
+      '<input type="file" id="importFile" accept=".md,.markdown,.cho,.crd,.txt,.chordpro,text/markdown,text/plain" style="display:none">';
+
+    updateMetaDisplay(song);
+    renderEditorHost(song);
+
+    function saveField(field, value) {
+      song[field] = value;
+      song.updatedAt = Date.now();
+      persist();
+    }
+    document.getElementById('titleInput').addEventListener('input', function (e) {
+      saveField('title', e.target.value); renderTabs();
+    });
+    document.getElementById('keyInput').addEventListener('input', function (e) { saveField('key', e.target.value); });
+    document.getElementById('capoInput').addEventListener('input', function (e) { saveField('capo', e.target.value); });
+    document.getElementById('tuningInput').addEventListener('input', function (e) { saveField('tuning', e.target.value); });
+    document.getElementById('tagsInput').addEventListener('input', function (e) {
+      song.tags = e.target.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+      song.updatedAt = Date.now();
+      persist();
+    });
+
+    if (!song.urls || typeof song.urls !== 'object') {
+      song.urls = { guitar: '', ukulele: '', piano: '', bass: '', drums: '' };
+    }
+    if (song.tempo == null) song.tempo = 90;
+
+    const tempoInput = document.getElementById('tempoInput');
+    if (tempoInput) {
+      tempoInput.addEventListener('input', function (e) {
+        const v = parseInt(e.target.value, 10);
+        song.tempo = isNaN(v) ? 90 : Math.max(30, Math.min(300, v));
+        song.updatedAt = Date.now();
+        persist();
+        if (metroRunning) startMetronome(song.tempo);
+      });
+    }
+    const metroBtn = document.getElementById('metroToggleBtn');
+    if (metroBtn) {
+      metroBtn.addEventListener('click', function () {
+        toggleMetronome(song.tempo || 90);
+      });
+      if (metroRunning) {
+        metroBtn.classList.add('active');
+        metroBtn.textContent = 'Stop';
+      }
+    }
+
+    const howtoUrlInput = document.getElementById('howtoUrlInput');
+    const openHowtoBtn = document.getElementById('openHowtoBtn');
+    if (howtoUrlInput) {
+      howtoUrlInput.addEventListener('input', function (e) {
+        const inst = song.instrument || 'guitar';
+        if (!song.urls) song.urls = { guitar: '', ukulele: '', piano: '', bass: '', drums: '' };
+        song.urls[inst] = e.target.value.trim();
+        song.updatedAt = Date.now();
+        persist();
+      });
+    }
+    if (openHowtoBtn) {
+      openHowtoBtn.addEventListener('click', function () {
+        const inst = song.instrument || 'guitar';
+        const url = (song.urls && song.urls[inst]) ? song.urls[inst].trim() : '';
+        if (!url) {
+          alert('Paste a URL for ' + inst + ' first (lesson, tab, or video).');
+          return;
+        }
+        let href = url;
+        if (!/^https?:\/\//i.test(href)) href = 'https://' + href;
+        window.open(href, '_blank', 'noopener,noreferrer');
+      });
+    }
+
+    document.getElementById('writeModeBtn').addEventListener('click', function () {
+      viewMode = 'write'; renderEditorHost(song); syncMode();
+    });
+    document.getElementById('previewModeBtn').addEventListener('click', function () {
+      viewMode = 'preview'; renderEditorHost(song); syncMode();
+    });
+    document.getElementById('exportMdBtn').addEventListener('click', function () { exportOne(song, 'md'); });
+    document.getElementById('exportChoBtn').addEventListener('click', function () { exportOne(song, 'chordpro'); });
+    document.getElementById('exportAllBtn').addEventListener('click', exportAll);
+    document.getElementById('deleteBtn').addEventListener('click', function () { deleteSong(song.id); });
+    document.getElementById('importFileBtn').addEventListener('click', function () {
+      document.getElementById('importFile').click();
+    });
+    document.getElementById('importFile').addEventListener('change', function (e) {
+      const f = e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = function () {
+        try {
+          const parsed = importSongText(reader.result, f.name);
+          if (parsed.title) song.title = parsed.title;
+          if (parsed.key) song.key = parsed.key;
+          if (parsed.capo) song.capo = parsed.capo;
+          if (parsed.tuning) song.tuning = parsed.tuning;
+          song.body = parsed.body != null ? parsed.body : song.body;
+          song.updatedAt = Date.now();
+          persist();
+          render();
+        } catch (err) {
+          alert('Could not import file: ' + (err.message || err));
+        }
+      };
+      reader.readAsText(f);
+      e.target.value = ''; // allow re-importing same file
+    });
+
+    document.querySelectorAll('.instrument-toggle button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        saveField('instrument', btn.dataset.inst);
+        document.querySelectorAll('.instrument-toggle button').forEach(function (b) {
+          b.classList.toggle('active', b === btn);
+        });
+        // refresh how-to URL field for this instrument
+        const label = document.getElementById('urlInstLabel');
+        const urlIn = document.getElementById('howtoUrlInput');
+        if (label) label.textContent = 'How-to URL (' + btn.dataset.inst + ')';
+        if (urlIn) {
+          if (!song.urls) song.urls = { guitar: '', ukulele: '', piano: '', bass: '', drums: '' };
+          urlIn.value = song.urls[btn.dataset.inst] || '';
+        }
+        renderChordChart(song);
+        renderEditorHost(song);
+      });
+    });
+    document.querySelectorAll('.notation-toggle button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        notationMode = btn.dataset.not;
+        if (notationMode === 'nashville') settings.chordStyle = 'nashville';
+        else if (notationMode === 'roman') settings.chordStyle = 'roman';
+        else settings.chordStyle = 'letters';
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+        document.querySelectorAll('.notation-toggle button').forEach(function (b) {
+          b.classList.toggle('active', b === btn);
+        });
+        if (viewMode === 'preview') renderEditorHost(song);
+      });
+    });
+    document.getElementById('transposeDownBtn').addEventListener('click', function () { applyTranspose(song, -1); });
+    document.getElementById('transposeUpBtn').addEventListener('click', function () { applyTranspose(song, 1); });
+
+    function applyTranspose(song, semi) {
+      song.body = transposeBody(song.body, semi);
+      if (song.key) song.key = transposeToken(song.key, semi) || song.key;
+      song.updatedAt = Date.now();
+      persist();
+      renderEditorHost(song);
+      updateMetaDisplay(song);
+      const ki = document.getElementById('keyInput');
+      if (ki) ki.value = song.key;
+    }
+    function syncMode() {
+      const w = document.getElementById('writeModeBtn');
+      const p = document.getElementById('previewModeBtn');
+      if (w) w.classList.toggle('active', viewMode === 'write');
+      if (p) p.classList.toggle('active', viewMode === 'preview');
+    }
+    function renderEditorHost(song) {
+      const host = document.getElementById('editorHost');
+      if (!host) return;
+      renderChordChart(song);
+      if (viewMode === 'preview' || perfMode) {
+        host.innerHTML = '<div class="chord-preview">' + renderPreview(song.body, song.instrument, song.key) + '</div>';
+      } else {
+        const ph = song.instrument === 'drums'
+          ? 'HH|x-x-x-x-\nSD|----o---\nBD|o-----o-'
+          : 'G          D          Em        C\nAmazing grace, how sweet the sound';
+        host.innerHTML = '<textarea id="bodyArea" placeholder="' + escapeHtml(ph) + '">' + escapeHtml(song.body) + '</textarea>';
+        const bodyArea = document.getElementById('bodyArea');
+        if (bodyArea) {
+          bodyArea.style.fontSize = (settings.fontSize || 15) + 'px';
+          bodyArea.addEventListener('input', function (e) {
+            saveField('body', e.target.value);
+            updateMetaDisplay(song);
+          });
+          bodyArea.addEventListener('keydown', function (e) {
+            if (e.key === 'Tab') {
+              e.preventDefault();
+              const start = this.selectionStart, end = this.selectionEnd;
+              this.value = this.value.slice(0, start) + '    ' + this.value.slice(end);
+              this.selectionStart = this.selectionEnd = start + 4;
+              saveField('body', this.value);
+            }
+          });
+        }
+      }
+    }
+  }
+
+  function render() {
+    renderTabs();
+    renderSheet();
+    applyTheme();
+  }
+
+  function enterPerf() {
+    if (!getActive()) return;
+    perfMode = true;
+    document.body.classList.add('perf-mode');
+    viewMode = 'preview';
+    renderSheet();
+    const zoomEl = document.getElementById('perfZoom');
+    if (zoomEl) document.documentElement.style.setProperty('--perf-scale', zoomEl.value);
+  }
+  function exitPerf() {
+    perfMode = false;
+    autoScroll = false;
+    if (scrollTimer) { clearInterval(scrollTimer); scrollTimer = null; }
+    document.body.classList.remove('perf-mode');
+    viewMode = 'write';
+    render();
+  }
+  function toggleAutoScroll() {
+    autoScroll = !autoScroll;
+    if (scrollTimer) { clearInterval(scrollTimer); scrollTimer = null; }
+    if (autoScroll) {
+      const speedEl = document.getElementById('scrollSpeed');
+      const speed = 130 - (speedEl ? +speedEl.value : 40);
+      scrollTimer = setInterval(function () { window.scrollBy(0, 1); }, Math.max(16, speed));
+    }
+  }
+
+  function openSettings() {
+    document.getElementById('setDefaultInst').value = settings.defaultInst || 'guitar';
+    document.getElementById('setDefaultKey').value = settings.defaultKey || '';
+    document.getElementById('setThemeBase').value = settings.themeBase || 'light';
+    document.getElementById('setChordStyle').value = settings.chordStyle || 'letters';
+    document.getElementById('setFontSize').value = settings.fontSize || 15;
+    document.getElementById('setAutosave').value = settings.autosave === false ? '0' : '1';
+    document.getElementById('setAiBase').value = settings.aiBase || 'https://api.openai.com/v1';
+    document.getElementById('setAiKey').value = settings.aiKey || '';
+    document.getElementById('setAiModel').value = settings.aiModel || 'gpt-4o-mini';
+    document.getElementById('setFbConfig').value = settings.firebaseConfig || '';
+    document.getElementById('setFbEmail').value = settings.fbEmail || '';
+    document.getElementById('setFbPassword').value = '';
+    syncColorInputs();
+    try { initFirebase(); } catch (e) {}
+    document.getElementById('settingsModal').classList.add('open');
+  }
+  function closeSettings() {
+    settings.defaultInst = document.getElementById('setDefaultInst').value;
+    settings.defaultKey = document.getElementById('setDefaultKey').value;
+    settings.themeBase = document.getElementById('setThemeBase').value === 'dark' ? 'dark' : 'light';
+    settings.chordStyle = document.getElementById('setChordStyle').value;
+    settings.fontSize = +document.getElementById('setFontSize').value || 15;
+    settings.autosave = document.getElementById('setAutosave').value === '1';
+    settings.aiBase = (document.getElementById('setAiBase').value || '').trim() || 'https://api.openai.com/v1';
+    settings.aiKey = (document.getElementById('setAiKey').value || '').trim();
+    settings.aiModel = (document.getElementById('setAiModel').value || '').trim() || 'gpt-4o-mini';
+    settings.firebaseConfig = (document.getElementById('setFbConfig').value || '').trim();
+    settings.fbEmail = (document.getElementById('setFbEmail').value || '').trim();
+    settings.colors = readColorsFromInputs();
+    if (settings.chordStyle === 'nashville') notationMode = 'nashville';
+    else if (settings.chordStyle === 'roman') notationMode = 'roman';
+    else notationMode = 'chords';
+    saveSettings();
+    document.getElementById('settingsModal').classList.remove('open');
+    render();
+  }
+
+  document.addEventListener('keydown', function (e) {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+      if (e.key === 'Escape') e.target.blur();
+      return;
+    }
+    if ((e.key === 'n' || e.key === 'N') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); newSong(); }
+    if ((e.key === 'p' || e.key === 'P') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault();
+      if (perfMode) exitPerf(); else enterPerf();
+    }
+    if (e.key === 'Escape' && perfMode) exitPerf();
+  });
+
+  document.getElementById('newSongBtn').addEventListener('click', newSong);
+  document.getElementById('newSetlistBtn').addEventListener('click', newSetlist);
+  document.getElementById('perfBtn').addEventListener('click', function () {
+    if (perfMode) exitPerf(); else enterPerf();
+  });
+  document.getElementById('perfExit').addEventListener('click', exitPerf);
+  document.getElementById('perfScrollToggle').addEventListener('click', toggleAutoScroll);
+  document.getElementById('perfZoom').addEventListener('change', function (e) {
+    document.documentElement.style.setProperty('--perf-scale', e.target.value);
+  });
+  document.getElementById('scrollSpeed').addEventListener('input', function () {
+    if (autoScroll) { toggleAutoScroll(); toggleAutoScroll(); }
+  });
+  document.getElementById('themeLightBtn').addEventListener('click', function () { setThemeBase('light'); });
+  document.getElementById('themeDarkBtn').addEventListener('click', function () { setThemeBase('dark'); });
+  document.getElementById('settingsBtn').addEventListener('click', openSettings);
+  document.getElementById('settingsClose').addEventListener('click', closeSettings);
+  document.getElementById('resetColorsBtn').addEventListener('click', function () {
+    settings.colors = null;
+    syncColorInputs();
+    applyTheme();
+  });
+  // live preview while picking colours
+  ['colInk','colInkSoft','colPaper','colPaperLine','colText','colTextDim',
+   'colBrass','colBrassBright','colBtnBg','colBtnText','colFocus','colPencil'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', function () {
+      settings.colors = readColorsFromInputs();
+      applyTheme();
+    });
+  });
+  function fbAction(fn, label) {
+    return function () {
+      // save config fields first
+      settings.firebaseConfig = (document.getElementById('setFbConfig').value || '').trim();
+      settings.fbEmail = (document.getElementById('setFbEmail').value || '').trim();
+      try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+      setFbStatus('Firebase: ' + label + '…');
+      Promise.resolve()
+        .then(fn)
+        .catch(function (err) {
+          setFbStatus('Firebase error: ' + (err.message || err));
+          alert(err.message || String(err));
+        });
+    };
+  }
+  document.getElementById('fbAnonBtn').addEventListener('click', fbAction(fbSignInAnon, 'signing in anonymously'));
+  document.getElementById('fbEmailBtn').addEventListener('click', fbAction(function () {
+    const email = (document.getElementById('setFbEmail').value || '').trim();
+    const pass = document.getElementById('setFbPassword').value || '';
+    if (!email || !pass) throw new Error('Enter email and password');
+    return fbSignInEmail(email, pass);
+  }, 'signing in'));
+  document.getElementById('fbSignOutBtn').addEventListener('click', fbAction(fbSignOut, 'signing out'));
+  document.getElementById('fbPushBtn').addEventListener('click', fbAction(fbPush, 'pushing'));
+  document.getElementById('fbPullBtn').addEventListener('click', fbAction(fbPull, 'pulling'));
+
+  document.getElementById('backupBtn').addEventListener('click', function () {
+    triggerDownload('liner-notes-backup.json', JSON.stringify({ state: state, settings: settings }, null, 2), 'application/json');
+  });
+  document.getElementById('restoreBtn').addEventListener('click', function () {
+    document.getElementById('restoreFile').click();
+  });
+  document.getElementById('restoreFile').addEventListener('change', function (e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      try {
+        const data = JSON.parse(reader.result);
+        if (data.state) state = data.state;
+        if (data.settings) settings = Object.assign(loadSettings(), data.settings);
+        if (!state.setlists) state.setlists = [];
+        persist();
+        saveSettings();
+        activeId = state.songs.length ? state.songs[0].id : null;
+        render();
+        document.getElementById('settingsModal').classList.remove('open');
+      } catch (err) { alert('Invalid backup file'); }
+    };
+    reader.readAsText(f);
+  });
+  document.getElementById('settingsModal').addEventListener('click', function (e) {
+    if (e.target === this) closeSettings();
+  });
+
+  applyTheme();
+  render();
+})();
+</script>
+</body>
+</html>
